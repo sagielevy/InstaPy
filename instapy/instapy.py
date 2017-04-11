@@ -24,8 +24,8 @@ from .print_log_writer import log_follower_num
 class InstaPy:
   """Class to be instantiated to use the script"""
   def __init__(self, username=None, password=None):
-    #self.display = Display(visible=0, size=(800, 600))
-    #self.display.start()
+    self.display = Display(visible=0, size=(800, 600))
+    self.display.start()
     chrome_options = Options()
     chrome_options.add_argument('--dns-prefetch-disable')
     chrome_options.add_argument('--no-sandbox')
@@ -330,7 +330,7 @@ class InstaPy:
     dump_follow_restriction(self.follow_restrict)
     self.browser.delete_all_cookies()
     self.browser.close()
-    #self.display.stop()
+    self.display.stop()
 
     print('')
     print('Session ended')
