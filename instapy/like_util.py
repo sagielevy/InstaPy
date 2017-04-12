@@ -64,7 +64,6 @@ def check_link(browser, link, dont_like, ignore_if_contains, username):
 
   print('Image from: ' + user_name)
   print('Link: ' + link)
-  print('Description: ' + image_text)
 
   for word in ignore_if_contains:
     if word in image_text:
