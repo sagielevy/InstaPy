@@ -3,6 +3,7 @@ from math import ceil
 from time import sleep
 from re import findall
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import WebDriverException
 
 def get_links_for_tag(browser, tag, amount):
   """Fetches the number of links specified
@@ -24,8 +25,8 @@ def get_links_for_tag(browser, tag, amount):
 
   load_button.click()
 
-  # body_elem.send_keys(Keys.HOME)
-  # sleep(1)
+  body_elem.send_keys(Keys.HOME)
+  sleep(1)
 
   main_elem = browser.find_element_by_tag_name('main')
 
@@ -34,8 +35,8 @@ def get_links_for_tag(browser, tag, amount):
   for _ in range(new_needed):  # add images x * 12
     body_elem.send_keys(Keys.END)
     sleep(1)
-    # body_elem.send_keys(Keys.HOME)
-    # sleep(1)
+    body_elem.send_keys(Keys.HOME)
+    sleep(1)
 
   link_elems = main_elem.find_elements_by_tag_name('a')
   links = [link_elem.get_attribute('href') for link_elem in link_elems]
@@ -43,41 +44,56 @@ def get_links_for_tag(browser, tag, amount):
   return links[:amount]
 
 def check_link(browser, link, dont_like, ignore_if_contains, username, logger):
-  browser.get(link)
-  sleep(2)
+  try:
+    browser.get(link)
+    sleep(2)
 
-  """Check if the Post is Valid/Exists"""
-  post_page = browser.execute_script("return window._sharedData.entry_data.PostPage")
+    """Check if the Post is Valid/Exists"""
+    post_page = browser.execute_script("return window._sharedData.entry_data.PostPage")
 
-  if post_page is None:
-    logger.info('Unavailable Page: ' + link)
-    return False, 'Unavailable Page'
+    if post_page is None:
+      logger.info('Unavailable Page: ' + link)
+      return False, 'Unavailable Page'
 
-  """Gets the description of the link and checks for the dont_like tags"""
-  user_name = browser.execute_script("return window._sharedData.entry_data.PostPage[0].media.owner.username")
-  image_text = browser.execute_script("return window._sharedData.entry_data.PostPage[0].media.caption")
+    """Gets the description of the link and checks for the dont_like tags"""
+    user_name = browser.execute_script("return window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.owner.username")
 
-  """If the image has no description gets the first comment""" 
-  if image_text is None:
-    image_text = browser.execute_script("return window._sharedData.entry_data.PostPage[0].media.comments.nodes[0].text")
-  if image_text is None:
-    image_text = "No description"
+    image_text = None
 
-  logger.info('Image from: ' + user_name)
-  logger.info('Link: ' + link)
-  logger.info('Description: ' + image_text)
+    try:
+        image_text = browser.execute_script("return window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.edge_media_to_caption.edges[0].node.text")
+    except WebDriverException:
+        pass
 
-  text_words = image_text.split()
+    """If the image has no description gets the first comment"""
+    if image_text is None:
+        try:
+          image_text = browser.execute_script(
+            "return window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.edge_media_to_comment.edges[0].node.text")
+        except WebDriverException:
+            pass
 
-  for word in ignore_if_contains:
-    if word in text_words:
-      return False, user_name
+    if image_text is None:
+      image_text = "No description"
 
-  for tag in dont_like:
-    if tag in text_words or user_name == username:
-      return True, user_name
+    logger.info('Image from: ' + user_name)
+    logger.info('Link: ' + link)
+    logger.info('Description: ' + str(image_text.encode('ascii', 'ignore')))
 
-  return False, user_name
+    text_words = image_text.split()
+
+    for word in ignore_if_contains:
+      if word in text_words:
+        return False, user_name
+
+    for tag in dont_like:
+      if tag in text_words or user_name == username:
+        return True, user_name
+
+    return False, user_name
+  except WebDriverException as e:
+    logger.info(e)
+    return True, None
 
 def like_image(browser, logger):
   """Likes the browser opened image"""
@@ -101,7 +117,14 @@ def get_tags(browser, url):
   browser.get(url)
   sleep(1)
 
-  image_text = browser.execute_script("return window._sharedData.entry_data.PostPage[0].media.caption")
+  tags = None
 
-  tags = findall(r'#\w*', image_text)
+  try:
+      image_text = browser.execute_script("return window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.edge_media_to_caption.edges[0].node.text")
+
+      if image_text is not None:
+        tags = findall(r'#\w*', image_text)
+  except WebDriverException:
+      pass
+
   return tags

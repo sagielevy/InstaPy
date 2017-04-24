@@ -58,6 +58,8 @@ def unfollow(browser, username, amount, dont_include, logger, unfollow_oldest):
     while len(person_list) < len(temp_list):
       actions.send_keys(Keys.END).perform()
       sleep(1)
+      actions.send_keys(Keys.HOME).perform()
+      sleep(1)
       person_list = temp_list
       temp_list = person_list_div.find_elements_by_class_name('_cx1ua')
 
@@ -69,6 +71,8 @@ def unfollow(browser, username, amount, dont_include, logger, unfollow_oldest):
       # Make sure enough users are loaded (as required by amount). If len(temp_list) == len(person_list) nothing has been loaded - stop
       while len(person_list) < amount and len(temp_list) != len(person_list):
         actions.send_keys(Keys.END).perform()
+        sleep(1)
+        actions.send_keys(Keys.HOME).perform()
         sleep(1)
         temp_list = person_list
         person_list = person_list_div.find_elements_by_class_name('_cx1ua')
@@ -88,6 +92,9 @@ def unfollow(browser, username, amount, dont_include, logger, unfollow_oldest):
       # Stop if reached amount or if reached a maximum of 10
       if unfollowNum >= amount or unfollowNum == 10:
           break
+
+  # Refresh page, just in case. Seeing some wierd things, people are not being unfollowed even after click
+  browser.get('https://www.instagram.com/' + username)
 
   return unfollowNum
 

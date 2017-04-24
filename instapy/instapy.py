@@ -7,6 +7,8 @@ from time import sleep
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+# from selenium.webdriver.firefox.options import Options
+# from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.chrome.options import Options
 
 from .clarifai_util import check_image
@@ -320,9 +322,9 @@ class InstaPy:
                 # Reset removed
                 removed = 0
 
-                # Sleep for 10 minutes after removing 10 people
-                self.logger.info('Sleeping for 10min')
-                sleep(600)
+                # Sleep for 2 minutes after removing 10 people
+                self.logger.info('Sleeping for 2 min')
+                sleep(120)
 
         return self
 
@@ -341,13 +343,21 @@ class InstaPy:
             followFile.write(str(self.followed))
 
     def _init_webdriver_browser(self):
+        # binary = FirefoxBinary(r'C:\Program Files (x86)\Mozilla Firefox\firefox.exe')
         chrome_options = Options()
         chrome_options.add_argument('--dns-prefetch-disable')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--lang=en-US')
         chrome_options.add_experimental_option('prefs', {'intl.accept_languages': 'en-US'})
         browser = webdriver.Chrome('./assets/chromedriver', chrome_options=chrome_options)
+        # browser = webdriver.Firefox(executable_path='./assets/geckodriver',
+        #                             firefox_options=chrome_options, firefox_binary=binary)
+
         browser.implicitly_wait(25)
+
+        # Maximize to avoid missing elements and such
+        browser.maximize_window()
+
         return browser
 
     def _create_logger(self, log_filename):
