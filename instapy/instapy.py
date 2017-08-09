@@ -6,7 +6,7 @@ from random import randint
 from time import sleep
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import WebDriverException
 # from selenium.webdriver.firefox.options import Options
 # from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.chrome.options import Options
@@ -47,7 +47,6 @@ class InstaPy:
 
         self.do_comment = False
         self.comment_percentage = 0
-        # self.comments = ['Cool!', 'Nice!', 'Looks good!']
 
         self.followed = 0
         self.follow_restrict = load_follow_restriction()
@@ -194,94 +193,99 @@ class InstaPy:
 
     def like_by_tags(self, tags=None, amount=50):
         """Likes (default) 50 images per given tag"""
-        if self.aborting:
-            return self
-
-        liked_img = 0
-        already_liked = 0
-        inap_img = 0
-        commented = 0
-        followed = 0
-
-        if tags is None:
-            tags = ()
-
-        for index, tag in enumerate(tags):
-            self.logger.info('Tag [%d/%d]' % (index + 1, len(tags)))
-            self.logger.info('--> ' + tag)
-
-            try:
-                links = get_links_for_tag(self.browser, tag, amount)
-            except NoSuchElementException:
-                self.logger.info('Too few images, aborting')
-
-                self.aborting = True
+        try:
+            if self.aborting:
                 return self
 
-            for i, link in enumerate(links):
-                self.logger.info('[%d/%d]' % (i + 1, len(links)))
-                self.logger.info(link)
+            liked_img = 0
+            already_liked = 0
+            inap_img = 0
+            commented = 0
+            followed = 0
+
+            if tags is None:
+                tags = ()
+
+            for index, tag in enumerate(tags):
+                self.logger.info('Tag [%d/%d]' % (index + 1, len(tags)))
+                self.logger.info('--> ' + tag)
 
                 try:
-                    inappropriate, user_name = \
-                        check_link(self.browser, link, self.dont_like,
-                                   self.ignore_if_contains, self.username, self.logger)
+                    links = get_links_for_tag(self.browser, tag, amount)
+                except WebDriverException:
+                    self.logger.info('Too few images, aborting')
 
-                    if not inappropriate:
-                        liked = like_image(self.browser, self.logger)
+                    self.aborting = True
+                    return self
 
-                        if liked:
-                            liked_img += 1
-                            checked_img = True
-                            temp_comments = []
-                            commenting = True if randint(0, 100) <= self.comment_percentage \
-                                else False
-                            following = True if randint(0, 100) <= self.follow_percentage \
-                                else False
+                for i, link in enumerate(links):
+                    self.logger.info('[%d/%d]' % (i + 1, len(links)))
+                    self.logger.info(link)
 
-                            if self.use_clarifai and (following or commenting):
-                                try:
-                                    checked_img, temp_comments = \
-                                        check_image(self.browser, self.clarifai_id,
-                                                    self.clarifai_secret,
-                                                    self.clarifai_img_tags,
-                                                    self.logger)
-                                except Exception as err:
-                                    self.logger.info('Image check error: ' + str(err))
+                    try:
+                        inappropriate, user_name = \
+                            check_link(self.browser, link, self.dont_like,
+                                       self.ignore_if_contains, self.username, self.logger)
 
-                            if self.do_comment and user_name not in self.dont_include \
-                                    and checked_img and commenting:
-                                commented += comment_image(self.browser,
-                                                           temp_comments if temp_comments
-                                                           else self.comments, self.logger)
+                        if not inappropriate:
+                            liked = like_image(self.browser, self.logger)
+
+                            if liked:
+                                liked_img += 1
+                                checked_img = True
+                                temp_comments = []
+                                commenting = True if randint(0, 100) <= self.comment_percentage \
+                                    else False
+                                following = True if randint(0, 100) <= self.follow_percentage \
+                                    else False
+
+                                if self.use_clarifai and (following or commenting):
+                                    try:
+                                        checked_img, temp_comments = \
+                                            check_image(self.browser, self.clarifai_id,
+                                                        self.clarifai_secret,
+                                                        self.clarifai_img_tags,
+                                                        self.logger)
+                                    except Exception as err:
+                                        self.logger.info('Image check error: ' + str(err))
+
+                                if self.do_comment and user_name not in self.dont_include \
+                                        and checked_img and commenting:
+                                    commented += comment_image(self.browser,
+                                                               temp_comments if temp_comments
+                                                               else self.comments, self.logger)
+                                else:
+                                    self.logger.info('--> Not commented')
+                                    sleep(1)
+
+                                if self.do_follow and user_name not in self.dont_include \
+                                        and checked_img and following \
+                                        and self.follow_restrict.get(user_name, 0) < self.follow_times:
+                                    followed += follow_user(self.browser, user_name, self.follow_restrict, self.logger)
+                                else:
+                                    self.logger.info('--> Not following')
+                                    sleep(1)
                             else:
-                                self.logger.info('--> Not commented')
-                                sleep(1)
-
-                            if self.do_follow and user_name not in self.dont_include \
-                                    and checked_img and following \
-                                    and self.follow_restrict.get(user_name, 0) < self.follow_times:
-                                followed += follow_user(self.browser, user_name, self.follow_restrict, self.logger)
-                            else:
-                                self.logger.info('--> Not following')
-                                sleep(1)
+                                already_liked += 1
                         else:
-                            already_liked += 1
-                    else:
-                        self.logger.info('Image not liked: Inappropriate')
-                        inap_img += 1
-                except NoSuchElementException as err:
-                    self.logger.error('Invalid Page: ' + str(err))
+                            self.logger.info('Image not liked: Inappropriate')
+                            inap_img += 1
+                    except WebDriverException as err:
+                        self.logger.error('Invalid Page: ' + str(err))
 
-                self.logger.info("")
+                    self.logger.info("")
 
-        self.logger.info('Liked: ' + str(liked_img))
-        self.logger.info('Already Liked: ' + str(already_liked))
-        self.logger.info('Inappropriate: ' + str(inap_img))
-        self.logger.info('Commented: ' + str(commented))
-        self.logger.info('Followed: ' + str(followed))
+            self.logger.info('Liked: ' + str(liked_img))
+            self.logger.info('Already Liked: ' + str(already_liked))
+            self.logger.info('Inappropriate: ' + str(inap_img))
+            self.logger.info('Commented: ' + str(commented))
+            self.logger.info('Followed: ' + str(followed))
 
-        self.followed += followed
+            self.followed += followed
+        except Exception as e:
+            # An exception has occurred. End safety and exit
+            self.end()
+            exit(1)
 
         return self
 
@@ -304,27 +308,32 @@ class InstaPy:
 
     def unfollow_users(self, amount=10, unfollow_oldest=False):
         """Unfollows (default) 10 users from your following list"""
-        removed = 0
+        try:
+            removed = 0
 
-        while amount > 0:
-            try:
-                removed += unfollow(self.browser, self.username, amount,
-                                   self.dont_include, self.logger, unfollow_oldest)
-                amount -= removed
-            except TypeError as err:
-                self.logger.error('Sorry, an error occurred: ' + str(err))
+            while amount > 0:
+                try:
+                    removed += unfollow(self.browser, self.username, amount,
+                                        self.dont_include, self.logger, unfollow_oldest)
+                    amount -= removed
+                except TypeError as err:
+                    self.logger.error('Sorry, an error occurred: ' + str(err))
 
-                self.aborting = True
-                return self
+                    self.aborting = True
+                    return self
 
-            # If 10 or more people have been unfollowed and there are more to unfollow
-            if amount > 0 and removed >= 10:
-                # Reset removed
-                removed = 0
+                # If 10 or more people have been unfollowed and there are more to unfollow
+                if amount > 0 and removed >= 10:
+                    # Reset removed
+                    removed = 0
 
-                # Sleep for 2 minutes after removing 10 people
-                self.logger.info('Sleeping for 2 min')
-                sleep(120)
+                    # Sleep for some minutes after removing 10 people
+                    self.logger.info('Sleeping for 5 min')
+                    sleep(300)
+        except Exception as e:
+            # An exception has occurred. End safety and exit
+            self.end()
+            exit(1)
 
         return self
 

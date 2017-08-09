@@ -3,15 +3,16 @@
 from random import choice
 from time import sleep
 
+
 def comment_image(browser, comments, logger):
-  """Checks if it should comment on the image"""
-  rand_comment = (choice(comments))
+    """Checks if it should comment on the image"""
+    rand_comment = (choice(comments))
 
-  comment_input = browser.find_element_by_xpath\
-    ('//input[@placeholder = "Add a comment…"]')
-  comment_input.send_keys(rand_comment)
-  comment_input.submit()
+    comment_input = browser.find_element_by_xpath \
+        ('//textarea[@placeholder = "Add a comment…"]')
+    comment_input.send_keys(rand_comment)
+    comment_input.submit()
 
-  logger.info('--> Commented: ' + rand_comment)
-  sleep(2)
-  return 1
+    logger.info('--> Commented: ' + rand_comment)
+    sleep(2)
+    return 1

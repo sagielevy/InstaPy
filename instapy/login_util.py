@@ -7,13 +7,13 @@ def login_user(browser, username, password):
   browser.get('https://www.instagram.com')
 
   #clicks the log in if you have an account link
-  login_elem = browser.find_element_by_class_name('_fcn8k')
+  login_elem = browser.find_element_by_class_name('_b93kq')
   login_elem.click()
 
   # enters username and password and logs the user in
   username_elem = browser.find_element_by_name('username')
   passwd_elem = browser.find_element_by_name('password')
-  login_div = browser.find_element_by_class_name('_uikn3')
+  login_div = browser.find_element_by_class_name('_1zdb1')
   login_elem = login_div.find_element_by_tag_name('button')
 
   username_elem.send_keys(username)
